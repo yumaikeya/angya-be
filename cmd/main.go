@@ -4,6 +4,7 @@ import (
 	"angya-backend/internal/photoApplication"
 	"angya-backend/internal/poiApplication"
 	"angya-backend/internal/spotApplication"
+	"angya-backend/pkg/databases"
 	"angya-backend/pkg/utils"
 	"encoding/json"
 	"fmt"
@@ -28,7 +29,11 @@ func (h *SpotHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprint(w, err.Error())
 		return
 	}
-	spotUsecase := spotApplication.NewUsecase()
+	db := databases.NewLocalPostgres()
+	spotUsecase := spotApplication.NewUsecase(db)
+
+	d, _ := db.DB()
+	defer d.Close()
 
 	switch r.Method {
 	case "POST":
@@ -57,7 +62,11 @@ func (h *PhotoHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	photoUsecase := photoApplication.NewUsecase()
+	db := databases.NewLocalPostgres()
+	photoUsecase := photoApplication.NewUsecase(db)
+
+	d, _ := db.DB()
+	defer d.Close()
 
 	switch r.Method {
 	case "POST":
@@ -86,7 +95,11 @@ func (h *PhotoDetailHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	id := utils.GetIdFromPath(r.URL.Path)
 
-	photoUsecase := photoApplication.NewUsecase()
+	db := databases.NewLocalPostgres()
+	photoUsecase := photoApplication.NewUsecase(db)
+
+	d, _ := db.DB()
+	defer d.Close()
 
 	switch r.Method {
 	case "PATCH":
@@ -107,7 +120,12 @@ func (h *PoiHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprint(w, err.Error())
 		return
 	}
-	poiUsecase := poiApplication.NewUsecase()
+
+	db := databases.NewLocalPostgres()
+	poiUsecase := poiApplication.NewUsecase(db)
+
+	d, _ := db.DB()
+	defer d.Close()
 
 	switch r.Method {
 	case "POST":

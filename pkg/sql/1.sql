@@ -8,6 +8,7 @@ CREATE TABLE photos (
     id varchar(36) NOT NULL,
     poi_id varchar(36),
     src text NOT NULL,
+    thunbnail text NOT NULL,
     spot varchar(255) NOT NULL,
     created_at bigint NOT NULL,
     PRIMARY KEY (id)

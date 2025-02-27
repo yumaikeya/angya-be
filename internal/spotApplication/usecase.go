@@ -2,15 +2,16 @@ package spotApplication
 
 import (
 	"angya-backend/domain/model"
-	"angya-backend/pkg/databases"
 	"angya-backend/pkg/utils"
 	"context"
 	"encoding/json"
 	"time"
+
+	"gorm.io/gorm"
 )
 
 type (
-	Usecase struct{}
+	Usecase struct{ db *gorm.DB }
 
 	command struct {
 		Name *string
@@ -27,8 +28,8 @@ type (
 	}
 )
 
-func NewUsecase() *Usecase {
-	return &Usecase{}
+func NewUsecase(db *gorm.DB) *Usecase {
+	return &Usecase{db}
 }
 
 func (usecase *Usecase) Register(ctx context.Context, b []byte) (dto DTO, err error) {
@@ -42,12 +43,8 @@ func (usecase *Usecase) Register(ctx context.Context, b []byte) (dto DTO, err er
 		return
 	}
 
-	db := databases.NewLocalPostgres()
-	if res := db.Table("spots").Save(&dbModel{Name: spot.Name, CreatedAt: spot.CreatedAt.Unix()}); res.Error != nil {
+	if res := usecase.db.Table("spots").Save(&dbModel{Name: spot.Name, CreatedAt: spot.CreatedAt.Unix()}); res.Error != nil {
 		return dto, res.Error
-	}
-	if d, _ := db.DB(); d != nil {
-		defer d.Close()
 	}
 
 	utils.MarshalAndInsert(spot, &dto)
@@ -58,8 +55,7 @@ func (usecase *Usecase) Register(ctx context.Context, b []byte) (dto DTO, err er
 func (usecase *Usecase) List(ctx context.Context) (dtos []DTO, err error) {
 	dbSpots := []dbModel{}
 
-	db := databases.NewLocalPostgres()
-	if res := db.Debug().Table("spots").Find(&dbSpots); res.Error != nil {
+	if res := usecase.db.Debug().Table("spots").Find(&dbSpots); res.Error != nil {
 		return dtos, res.Error
 	}
 	spots := func() (s []model.Spot) {
@@ -68,9 +64,6 @@ func (usecase *Usecase) List(ctx context.Context) (dtos []DTO, err error) {
 		}
 		return
 	}()
-	if d, _ := db.DB(); d != nil {
-		defer d.Close()
-	}
 
 	utils.MarshalAndInsert(spots, &dtos)
 

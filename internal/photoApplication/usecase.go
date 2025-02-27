@@ -2,15 +2,16 @@ package photoApplication
 
 import (
 	"angya-backend/domain/model"
-	"angya-backend/pkg/databases"
 	"angya-backend/pkg/utils"
 	"context"
 	"encoding/json"
 	"time"
+
+	"gorm.io/gorm"
 )
 
 type (
-	Usecase struct{}
+	Usecase struct{ db *gorm.DB }
 
 	command struct {
 		Id    *string
@@ -37,8 +38,8 @@ type (
 )
 
 // This function returns a pointer to Usecase.
-func NewUsecase() *Usecase {
-	return &Usecase{}
+func NewUsecase(db *gorm.DB) *Usecase {
+	return &Usecase{db}
 }
 
 func (usecase *Usecase) Register(ctx context.Context, b []byte) (dto DTO, err error) {
@@ -52,12 +53,8 @@ func (usecase *Usecase) Register(ctx context.Context, b []byte) (dto DTO, err er
 		return dto, err
 	}
 
-	db := databases.NewLocalPostgres()
-	if res := db.Debug().Table("photos").Save(&dbModel{Id: photo.Id, Src: photo.Src, Spot: photo.Spot, CreatedAt: photo.CreatedAt.Unix()}); res.Error != nil {
+	if res := usecase.db.Table("photos").Save(&dbModel{Id: photo.Id, Src: photo.Src, Spot: photo.Spot, CreatedAt: photo.CreatedAt.Unix()}); res.Error != nil {
 		return dto, res.Error
-	}
-	if d, _ := db.DB(); d != nil {
-		defer d.Close()
 	}
 
 	utils.MarshalAndInsert(photo, &dto)
@@ -72,20 +69,16 @@ func (usecase *Usecase) Update(ctx context.Context, id string, b []byte) (dto DT
 	}
 	cmd.Id = &id
 
-	db := databases.NewLocalPostgres()
 	dbPhoto, photo := dbModel{}, model.Photo{}
-	if res := db.Table("photos").Where("id = ?", id).First(&dbPhoto); res.Error != nil {
+	if res := usecase.db.Table("photos").Where("id = ?", id).First(&dbPhoto); res.Error != nil {
 		return dto, res.Error
 	}
 	utils.MarshalAndInsert(dbPhoto, &photo)
 
 	photo.UpdateNewPhoto(cmd.PoiId, cmd.Src, cmd.Spot)
 
-	if res := db.Debug().Table("photos").Save(&dbModel{Id: photo.Id, PoiId: photo.PoiId, Src: photo.Src, Spot: photo.Spot}); res.Error != nil {
+	if res := usecase.db.Table("photos").Save(&dbModel{Id: photo.Id, PoiId: photo.PoiId, Src: photo.Src, Spot: photo.Spot}); res.Error != nil {
 		return dto, res.Error
-	}
-	if d, _ := db.DB(); d != nil {
-		defer d.Close()
 	}
 
 	utils.MarshalAndInsert(photo, &dto)
@@ -96,8 +89,7 @@ func (usecase *Usecase) Update(ctx context.Context, id string, b []byte) (dto DT
 func (usecase *Usecase) List(ctx context.Context) (dtos []DTO, err error) {
 	dbPhotos := []dbModel{}
 
-	db := databases.NewLocalPostgres()
-	if res := db.Debug().Table("photos").Where("poi_id IS NULL").Find(&dbPhotos); res.Error != nil {
+	if res := usecase.db.Table("photos").Where("poi_id IS NULL").Find(&dbPhotos); res.Error != nil {
 		return dtos, res.Error
 	}
 	spots := func() (s []model.Photo) {
@@ -106,9 +98,6 @@ func (usecase *Usecase) List(ctx context.Context) (dtos []DTO, err error) {
 		}
 		return
 	}()
-	if d, _ := db.DB(); d != nil {
-		defer d.Close()
-	}
 
 	utils.MarshalAndInsert(spots, &dtos)
 	return

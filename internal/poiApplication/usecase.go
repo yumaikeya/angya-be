@@ -3,16 +3,16 @@ package poiApplication
 import (
 	"angya-backend/domain/model"
 	"angya-backend/internal/photoApplication"
-	"angya-backend/pkg/databases"
 	"angya-backend/pkg/utils"
 	"context"
 	"encoding/json"
-	"fmt"
 	"time"
+
+	"gorm.io/gorm"
 )
 
 type (
-	Usecase struct{}
+	Usecase struct{ db *gorm.DB }
 
 	command struct {
 		Id        *string
@@ -54,8 +54,8 @@ type (
 	}
 )
 
-func NewUsecase() *Usecase {
-	return &Usecase{}
+func NewUsecase(db *gorm.DB) *Usecase {
+	return &Usecase{db}
 }
 
 func (usecase *Usecase) Migrate(ctx context.Context, b []byte) (dto DTO, err error) {
@@ -69,16 +69,11 @@ func (usecase *Usecase) Migrate(ctx context.Context, b []byte) (dto DTO, err err
 		return
 	}
 
-	db := databases.NewLocalPostgres()
-	if res := db.Table("pois").Save(&dbModel{Id: poi.Id, PhotoId: poi.PhotoId, Latitude: poi.Latitude, Longitude: poi.Longitude, CreatedAt: poi.CreatedAt.Unix(), UpdatedAt: poi.UpdatedAt.Unix()}); res.Error != nil {
+	if res := usecase.db.Table("pois").Save(&dbModel{Id: poi.Id, PhotoId: poi.PhotoId, Latitude: poi.Latitude, Longitude: poi.Longitude, CreatedAt: poi.CreatedAt.Unix(), UpdatedAt: poi.UpdatedAt.Unix()}); res.Error != nil {
 		return dto, res.Error
 	}
-	if res := db.Table("photos").Where("id = ?", poi.PhotoId).Updates(&struct{ PoiId string }{PoiId: poi.Id}); res.Error != nil { // photos tableのpoiIdを更新
+	if res := usecase.db.Table("photos").Where("id = ?", poi.PhotoId).Updates(&struct{ PoiId string }{PoiId: poi.Id}); res.Error != nil { // photos tableのpoiIdを更新
 		return dto, res.Error
-	}
-
-	if d, _ := db.DB(); d != nil {
-		defer d.Close()
 	}
 
 	utils.MarshalAndInsert(poi, &dto)
@@ -89,11 +84,9 @@ func (usecase *Usecase) Migrate(ctx context.Context, b []byte) (dto DTO, err err
 func (usecase *Usecase) List(ctx context.Context) (dtos []DTO, err error) {
 	dbPois := []dbModel{}
 
-	db := databases.NewLocalPostgres()
-	if res := db.Debug().Table("pois").Preload("Photo").Find(&dbPois); res.Error != nil {
+	if res := usecase.db.Debug().Table("pois").Preload("Photo").Find(&dbPois); res.Error != nil {
 		return dtos, res.Error
 	}
-	fmt.Printf("%#v", dbPois)
 
 	pois := func() (s []model.Poi) {
 		for i := range dbPois {
@@ -115,10 +108,6 @@ func (usecase *Usecase) List(ctx context.Context) (dtos []DTO, err error) {
 		}
 		return
 	}()
-
-	if d, _ := db.DB(); d != nil {
-		defer d.Close()
-	}
 
 	utils.MarshalAndInsert(pois, &dtos)
 

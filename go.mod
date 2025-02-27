@@ -12,6 +12,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.61.2
 	github.com/carlmjohnson/requests v0.24.2
 	github.com/google/uuid v1.6.0
+	github.com/nfnt/resize v0.0.0-20180221191011-83c6a9932646
 	github.com/pkg/errors v0.9.1
 	go.uber.org/zap v1.27.0
 	gorm.io/driver/postgres v1.5.11

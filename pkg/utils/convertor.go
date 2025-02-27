@@ -10,6 +10,9 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
+	"image"
+	"image/jpeg"
+	"io"
 	"net/http"
 	"os"
 	"path"
@@ -99,4 +102,13 @@ func GetIdFromPath(p string) (id string) {
 	p = path.Clean("/" + p)
 	slc := strings.Split(p, "/")
 	return slc[len(slc)-1]
+}
+
+func ImageToReader(img image.Image) (io.Reader, error) {
+	buf := new(bytes.Buffer)
+	err := jpeg.Encode(buf, img, nil) // または jpeg.Encode(buf, img, nil)
+	if err != nil {
+		return nil, err
+	}
+	return bytes.NewReader(buf.Bytes()), nil
 }
